@@ -117,7 +117,9 @@ def printLastCameraStatus(cameraStatus):
 
 
 def waitForReturn():	
-	inVal = input("press enter")
+    # This was the problem with the Tango Server
+	#inVal = input("press enter")
+    pass
 
 
 def ExitOnError(retVal, functionName, lastStatus):
