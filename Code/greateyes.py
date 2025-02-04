@@ -140,7 +140,7 @@ def ExitOnError(retVal, functionName, lastStatus):
 	if lastStatus == statusMSG.Message_IllegalCombinationBinCrop:
 		return True;
 
-	waitForReturn()
+	# waitForReturn()
 	sys.exit(0)
 
 
