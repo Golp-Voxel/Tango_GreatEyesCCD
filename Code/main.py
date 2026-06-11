@@ -145,7 +145,7 @@ class GreatEyes():
             print(f"connected to camera {modelStr}\n")				
         else:
             print(f"no device found")
-            waitForReturn();
+            # waitForReturn();
             return -1;
 
         # initialize camera
@@ -386,7 +386,7 @@ class GreatEyes():
             status = DisconnectCameraServer(cameraAddr)
             ExitOnError(status, "DisconnectCameraServer()", lastStatus[0])
 
-        waitForReturn();
+        # waitForReturn();
         return 0
         
 

@@ -117,7 +117,9 @@ def printLastCameraStatus(cameraStatus):
 
 
 def waitForReturn():	
-	inVal = input("press enter")
+    # This was the problem with the Tango Server
+	#inVal = input("press enter")
+    pass
 
 
 def ExitOnError(retVal, functionName, lastStatus):
@@ -138,7 +140,7 @@ def ExitOnError(retVal, functionName, lastStatus):
 	if lastStatus == statusMSG.Message_IllegalCombinationBinCrop:
 		return True;
 
-	waitForReturn()
+	# waitForReturn()
 	sys.exit(0)
 
 

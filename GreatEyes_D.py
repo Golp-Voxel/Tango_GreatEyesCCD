@@ -42,7 +42,8 @@ connectionType = connectionType_USB;
 ip = "192.168.1.233";
 
 # exposure time in ms
-exposureTimeMilliseconds = 10;
+# CHANGE THIS FOR ACQUISITION DURATION
+exposureTimeMilliseconds = 1500;
 
 # pixel clock
 readoutSpeed = readoutSpeed_1_MHz;
@@ -54,7 +55,8 @@ setBytesPerPixel = 4;
 coolingHardwareOption = 42223;
 
 # set temperature for temperature control in degree Celsius
-switchOnTemperatureControl = False;
+# CHANGE THIS TO TRUE TO TURN ON TEMP CONTROL AND TARGET SET TEMP
+switchOnTemperatureControl = True; 
 setTemperature             = 15;
 
 # shutter timings in SHUTTER_AUTO mode
@@ -114,9 +116,12 @@ supportCropXString    = "not supported"
 
 connectionTypeString = ["USB", "", "", "Ethernet"]
 
-
+max_temp = 25 
+min_temp = -100
 
 class GreatEyes():
+
+    
 
     def ConnectCamera():
         # /****************************************
@@ -196,6 +201,44 @@ class GreatEyes():
         print(f"sensor feature crop in x (columns): {supportCropXString}\n")
 
 
+    def Cooling_SwitchOff():
+        try:
+            print(f"Switch off the cooling")
+            status = TemperatureControl_SwitchOff(lastStatus, cameraAddr)
+            ExitOnError(status, "TemperatureControl_SetTemperature()", lastStatus[0])
+            return True
+        except:
+            return False
+
+
+    def SetTemperatureForCooling( setTemperatureFromUser):
+        # check setTemperature value
+        global setTemperature
+
+        setTemperature = setTemperatureFromUser;
+
+        setTemperatureValid = False
+        if float(setTemperatureFromUser) > float(max_temp):
+            setTemperatureValid = False;
+        elif float(setTemperatureFromUser) < float(min_temp):
+            setTemperatureValid = False;
+        else:
+            setTemperatureValid = True;
+
+        # set temperature
+        if setTemperatureValid:
+            print(f"setting temperature: {setTemperature} degree Celsius")
+            status = TemperatureControl_SetTemperature(setTemperature, lastStatus, cameraAddr)
+            ExitOnError(status, "TemperatureControl_SetTemperature()", lastStatus[0])
+            print("Temperature was set to the valeu")
+            return {"result": True, "details": f"Temperature was set to the valeu{setTemperature}"}
+        else:
+            msg_to_send = f"set temperature value ({setTemperature} degree Celsius) not valid"
+            print(msg_to_send)
+            print(f"no temperature set")           
+            return {"result": False, "details": msg_to_send}
+
+
     def CoolingSystem():
         # /****************************************
         # * 2. setup cooling control
@@ -203,6 +246,8 @@ class GreatEyes():
 
         # global vars
         global lastStatus
+        global max_temp
+        global min_temp
         # print(f"Last Status : {lastStatus[0]}")
         
         # variables for temperature control
@@ -215,49 +260,39 @@ class GreatEyes():
         backsideTemperature = [0];
         temperatureLevels = 0;
     
-       
-        setTemperatureValid = False;
+    
 
         minTemperature = [0];
         maxTemperature = [0];
-
-        if switchOnTemperatureControl:
-            # initial setup of temperature control
-            numCoolingLevel = TemperatureControl_Init(coolingHardwareOption, minTemperature, maxTemperature, lastStatus, cameraAddr)
-            # ExitOnError(numCoolingLevel, "TemperatureControl_Init()", lastStatus[0]);
-            print(f"temperature control initialized.")
-            print(f"numCoolingLevel: {numCoolingLevel} cooling levels")
-            print(f"minTemperature: {minTemperature[0]} degree Celsius")
-            print(f"maxTemperature: {maxTemperature[0]} degree Celsius\n")
-
-
-        if switchOnTemperatureControl:
-            # check setTemperature value
-            if setTemperature > maxTemperature[0]:
-                setTemperatureValid = False;
-        elif setTemperature < minTemperature[0]:
-            setTemperatureValid = False;
-
-        # set temperature
-        if setTemperatureValid:
-            print(f"setting temperature: {setTemperature} degree Celsius")
-            status = TemperatureControl_SetTemperature(setTemperature, lastStatus, cameraAddr)
-            ExitOnError(status, "TemperatureControl_SetTemperature()", lastStatus[0])
-        else:
-            print(f"set temperature value ({setTemperature} degree Celsius) not valid")
-            print(f"no temperature set")
-
-        print(f"\n")
+        try: 
+            if switchOnTemperatureControl:
+                # initial setup of temperature control
+                numCoolingLevel = TemperatureControl_Init(coolingHardwareOption, minTemperature, maxTemperature, lastStatus, cameraAddr)
+                # ExitOnError(numCoolingLevel, "TemperatureControl_Init()", lastStatus[0]);
+                print(f"temperature control initialized.")
+                print(f"numCoolingLevel: {numCoolingLevel} cooling levels")
+                print(f"minTemperature: {minTemperature[0]} degree Celsius")
+                print(f"maxTemperature: {maxTemperature[0]} degree Celsius\n")
+                max_temp= float(maxTemperature[0])
+                min_temp= float(minTemperature[0])
 
 
-        # readout temperature values ()
-        status = TemperatureControl_GetTemperature(thermistorSensorTemperature, sensorTemperature, lastStatus, cameraAddr)
-        ExitOnError(status, "TemperatureControl_GetTemperature()", lastStatus[0]);			
-        print(f"sensor temperature: {sensorTemperature[0]} degree Celsius")
-        
-        status = TemperatureControl_GetTemperature(thermistorBacksideTemperature, backsideTemperature, lastStatus, cameraAddr)
-        ExitOnError(status, "TemperatureControl_GetTemperature()", lastStatus[0]);			
-        print(f"backside temperature: {backsideTemperature[0]} degree Celsius\n")
+            if switchOnTemperatureControl:
+                GreatEyes.SetTemperatureForCooling(setTemperature)
+                print("working")
+
+
+            # readout temperature values ()
+            status = TemperatureControl_GetTemperature(thermistorSensorTemperature, sensorTemperature, lastStatus, cameraAddr)
+            ExitOnError(status, "TemperatureControl_GetTemperature()", lastStatus[0]);			
+            print(f"sensor temperature: {sensorTemperature[0]} degree Celsius")
+            
+            status = TemperatureControl_GetTemperature(thermistorBacksideTemperature, backsideTemperature, lastStatus, cameraAddr)
+            ExitOnError(status, "TemperatureControl_GetTemperature()", lastStatus[0]);			
+            print(f"backside temperature: {backsideTemperature[0]} degree Celsius\n")
+            return True
+        except:
+            return False
 
     
     def AutoShutter():  
@@ -292,16 +327,16 @@ class GreatEyes():
         # * **************************************/
 
         # sensor parameters
-        width = [2048];
-        height = [2052];		
+        width = [2048]
+        height = [2052]		
         # print(f"bytesPerPixel {bytesPerPixel[0]}  - c_uint8 {c_uint8} ")
         # print(f"bytesPerPixel {bytesPerPixel[0]}  - c_uint16 {c_uint16} ")
         # print(f"bytesPerPixel {bytesPerPixel[0]}  - c_uint32 {c_uint32} ")
         
         # set exposure time
-        # status = SetExposure(exposureTimeMilliseconds, lastStatus, cameraAddr)
-        # ExitOnError(status, "SetExposure()", lastStatus[0]);	
-        # print(f"exposure time set: {exposureTimeMilliseconds} ms")
+        status = SetExposure(exposureTimeMilliseconds, lastStatus, cameraAddr)
+        ExitOnError(status, "SetExposure()", lastStatus[0])	
+        print(f"exposure time set: {exposureTimeMilliseconds} ms")
 
         # # set readout speed
         # status = SetReadOutSpeed(readoutSpeed, lastStatus, cameraAddr)
@@ -310,7 +345,7 @@ class GreatEyes():
 
         # set bitDepth of incomming data array
         status = SetBitDepth(setBytesPerPixel, lastStatus, cameraAddr)
-        ExitOnError(status, "SetBitDepth()", lastStatus[0]);
+        ExitOnError(status, "SetBitDepth()", lastStatus[0])
         # print(f"bit depth set to: \({setBytesPerPixel} * 8\) bit")
 
         # # get size of image
@@ -339,7 +374,7 @@ class GreatEyes():
 
         # start acquisition
         status = StartMeasurement(enableBiasCorrection, enableSyncOutput, enableShutterOutput, useExternalTrigger, triggerTimeoutMilliseconds, lastStatus, cameraAddr)
-        ExitOnError(status, "StartMeasurement()", lastStatus[0]);
+        ExitOnError(status, "StartMeasurement()", lastStatus[0])
         # print(f"image acquisition started")
 
         # wait until image acquisition is complete 
@@ -427,6 +462,35 @@ class GreatEyes():
 
 
 
+    def readTemperature():
+        # global vars
+        global lastStatus
+        # print(f"Last Status : {lastStatus[0]}")
+        msg_to_send = {}
+        
+        # variables for temperature control
+        # temperature/cooling
+        numCoolingLevel = 0
+        thermistorSensorTemperature = 0
+        thermistorBacksideTemperature = 1
+
+        sensorTemperature = [0];
+        backsideTemperature = [0];
+        # readout temperature values again
+        status = TemperatureControl_GetTemperature(thermistorSensorTemperature, sensorTemperature, lastStatus, cameraAddr)
+        ExitOnError(status, "TemperatureControl_GetTemperature()", lastStatus[0])
+        print(f"sensor temperature: {sensorTemperature[0]} degree Celsius")
+        
+        msg_to_send["sensor"] = sensorTemperature[0]
+
+        status = TemperatureControl_GetTemperature(thermistorBacksideTemperature, backsideTemperature, lastStatus, cameraAddr)
+        ExitOnError(status, "TemperatureControl_GetTemperature()", lastStatus[0])
+        print(f"backside temperature: {backsideTemperature[0]} degree Celsius")
+
+        msg_to_send["backside"] = backsideTemperature[0]
+
+        return msg_to_send
+
 
 class TestBitfield(Structure):
     _fields_ = [("x", c_uint16, 9),
@@ -443,14 +507,11 @@ def TestCTypesBitfield() -> None:
 
 
 class GreatEyes_D(Device):
-    _my_current = 2.3456
-    _my_range = 0.0
-    _my_compliance = 0.0
-    _output_on = False
     _available_cameras = ""
     CAMARA = None
     my_camera_ready = False
     save_image = []
+    _exposure_time = exposureTimeMilliseconds
 
     host = device_property(dtype=str, default_value="localhost")
     port = class_property(dtype=int, default_value=10000)
@@ -459,13 +520,16 @@ class GreatEyes_D(Device):
     def init_device(self):
         super().init_device()
         self.info_stream(f"Connection details: {self.host}:{self.port}")
-        self.set_state(DevState.ON)
         self.info_stream("\r Try to start the GreatEyes Driver \r")
         setGreatEyesDLL(DLL_Location)
-        GreatEyes.ConnectCamera()
+        if GreatEyes.ConnectCamera() == -1 :
+            self.set_status("GreatEyes Camara Driver is did not detect any camera")
+            self.set_state(DevState.OFF)
+        else:
+            GreatEyes.CoolingSystem()
         
-        
-        self.set_status("Thorlabs Camara Driver is ON")
+            self.set_status("GreatEyes Camara Driver is ON")
+            self.set_state(DevState.ON)
         
     
     # Tango Device Delete function     
@@ -473,31 +537,6 @@ class GreatEyes_D(Device):
         GreatEyes.DisconnectCamara()
 
 
-    current = attribute(
-        label="Current",
-        dtype=float,
-        display_level=DispLevel.EXPERT,
-        access=AttrWriteType.READ_WRITE,
-        unit="A",
-        format="8.4f",
-        min_value=0.0,
-        max_value=8.5,
-        min_alarm=0.1,
-        max_alarm=8.4,
-        min_warning=0.5,
-        max_warning=8.0,
-        fget="get_current",
-        fset="set_current",
-        doc="the power supply current",
-    )
-
-    noise = attribute(
-        label="Noise",
-        dtype=((float,),),
-        max_dim_x=1450,
-        max_dim_y=1450,
-        fget="get_noise",
-    )
 
     Image_foto = attribute(
         label="Image Greateyes",
@@ -509,31 +548,35 @@ class GreatEyes_D(Device):
         #fget="get_image",
     )
 
-    # TakeImage = attribute(
-    #     label="Take a Image",
-    #     dtype=str,
-    #     fget="take_image",
-    #     doc="Test to take image",
-    # )
+    ExposureTime = attribute(
+        dtype='DevULong64',
+        access=AttrWriteType.READ_WRITE,
+        label="Exposure time of the camera",
+        unit="ms",
+        display_unit="ms",
+        doc="Exposure time of the camera  in ms",
+    )
+
+    def read_ExposureTime(self):
+        # PROTECTED REGION ID(ThorlabsC.ExposureTime_read) ENABLED START #
+        """Return the ExposureTime attribute."""
+        return self._exposure_time
+        # PROTECTED REGION END #    //  ThorlabsC.ExposureTime_read
+    def write_ExposureTime(self, value):
+        # PROTECTED REGION ID(ThorlabsC.ExposureTime_write) ENABLED START #
+        """Set the ExposureTime attribute."""
+        global exposureTimeMilliseconds
+        self._exposure_time = value
+        exposureTimeMilliseconds = int(value)  
+        pass
 
 
-    @attribute
-    def voltage(self):
-        return 10.0
-
-    def get_current(self):
-        return self._my_current
-
-    def set_current(self, current):
-        print("Current set to %f" % current)
-        self._my_current = current
-
-    def get_noise(self):
-        a = np.random.random_sample((500, 500))
-        print(type(a))
-        return a
-    
     def get_image_old(self):
+        image_buffer_copy = GreatEyes.AcquisitionFullFrame()
+        # image_buffer_copy = np.random.random_sample((2052, 2048))
+        return image_buffer_copy
+    
+    def get_image_pass_expo(self):
         image_buffer_copy = GreatEyes.AcquisitionFullFrame()
         # image_buffer_copy = np.random.random_sample((2052, 2048))
         return image_buffer_copy
@@ -551,33 +594,44 @@ class GreatEyes_D(Device):
     def get_image(self):
         return self.save_image
 
-    # @command(dtype_in=int, dtype_out=str)
-    # def set_expousure_time_us(self,parameter):
-    #     self.CAMARA.exposure_time_us = parameter  # set exposure to 1.1 ms
-    #     return "CAMARA "+ " was set exposure time "+ str(parameter) +" us\n"
-            
-    # @command(dtype_in=int, dtype_out=str)      
-    # def set_frames_per_trigger_zero_for_unlimited(self,parameter):
-    #     self.CAMARA.frames_per_trigger_zero_for_unlimited = parameter  # start camera in continuous mode
-    #     return "CAMARA "+ " was set frames per trigger zero or unlimited "+ str(parameter) +"\n"
-        
-    # @command(dtype_in=int, dtype_out=str)       
-    # def set_image_poll_timeout_ms(self,parameter):
-    #     self.CAMARA.image_poll_timeout_ms = parameter  # 1 second polling timeout
-    #     return "CAMARA "+ " was set image poll timeout "+ str(parameter) +" ms\n"
-
 
     @command(dtype_out=str)    
-    def get_foto_JSON(self):
-
-        send_JSON = {"Image":self.get_noise().tolist()}
+    def get_foto_JSON(self,):
+        send_JSON = {"Image":self.get_image_pass_expo().tolist()}
             
         return json.dumps(send_JSON)
-   
-    @command(dtype_in=bool, dtype_out=bool)
-    def output_on_off(self, on_off):
-        self._output_on = on_off
-        return self._output_on
+    
+    @command(dtype_out=str)    
+    def getTemperature(self):
+
+        send_JSON = GreatEyes.readTemperature()
+            
+        return json.dumps(send_JSON)
+    
+    
+    # TO BE TESTED
+
+    @command(dtype_in=int,dtype_out=str)    
+    def setTemperature(self, temperature):
+
+        send_msg = GreatEyes.SetTemperatureForCooling(temperature)
+        return json.dumps(send_msg)
+    
+
+    @command(dtype_out=str)    
+    def OffCooling(self):
+
+        send_msg = GreatEyes.Cooling_SwitchOff()
+            
+        return json.dumps({"result":send_msg})
+    
+    @command(dtype_out=str)    
+    def OnCooling(self):
+        
+        send_msg = GreatEyes.CoolingSystem()
+            
+        return  json.dumps({"result":send_msg})
+   # TO BE TESTED
         
 if __name__ == "__main__":
     GreatEyes_D.run_server()
